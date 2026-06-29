@@ -6,7 +6,7 @@ FROM projectdiscovery/nuclei:latest AS nuclei-src
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc git curl wget unzip ca-certificates \
+    build-essential git curl wget unzip ca-certificates \
     nmap nbtscan onesixtyone \
     bsdmainutils dnsutils coreutils openssl \
     ruby ruby-dev bundler \

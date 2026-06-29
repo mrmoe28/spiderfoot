@@ -1347,7 +1347,7 @@ class SpiderFootCli(cmd.Cmd):
         return True
 
 
-if __name__ == "__main__":
+def main():
     p = argparse.ArgumentParser(description='SpiderFoot: Open Source Intelligence Automation.')
     p.add_argument("-d", "--debug", help="Enable debug output.", action='store_true')
     p.add_argument("-s", metavar="URL", type=str, help="Connect to SpiderFoot server on URL. By default, a connection to http://127.0.0.1:5001 will be attempted.")
@@ -1451,3 +1451,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n")
         sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

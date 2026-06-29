@@ -1,18 +1,33 @@
 .git/
+.github/
 
-build
-dist
-*.egg-info
+build/
+dist/
+*.egg-info/
 *.egg/
 *.pyc
+*.pyo
 *.swp
+*.swo
 
+.venv/
 venv/
+env/
+
 cache/
 log/
 spiderfoot.db*
 spiderfoot.test.db
 
-__pycache__
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 htmlcov/
+.coverage
+coverage.xml
+
 docs/
+test/
+*.md
+!README.md

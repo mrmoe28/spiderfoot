@@ -188,7 +188,7 @@
                             if (data.length == 0) {
                                 var table = "<div id='scansummary-content'>&nbsp;&nbsp;No results found. Try broadening your search criteria.</div>";
                             } else {
-                                var table = "<table id='scansummary-content' class='table table-bordered table-striped small tablesorter'><thead><tr>";
+                                var table = "<div class='table-responsive'><table id='scansummary-content' class='table table-bordered table-striped small tablesorter'><thead><tr>";
                                 if (typeName == null) {
                                     table += "<th class='sorter-false'>Data Element Type</th>";
                                 }
@@ -208,7 +208,7 @@
                                     table += "</pre></td>";
                                     table += "</tr>";
                                 }
-                                table += "</tbody></table>"
+                                table += "</tbody></table></div>"
                             }
                             $("#loader").fadeOut(500);
                             $("#mainbody").append(crumbs + table);

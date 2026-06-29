@@ -49,7 +49,7 @@ table pre {
 }
 
 .graph-container {
-  height: 650px;
+  height: max(300px, 50vh);
   width: 100%;
 }
 
@@ -200,4 +200,39 @@ input:checked + .slider:before {
 
 .download-button {
   padding: 6px 12px !important;
+}
+
+/* ── Mobile / fluid layout ───────────────────────────── */
+body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 767px) {
+  /* Force all form-control inputs full-width (overrides inline width:500px) */
+  .form-control {
+    width: 100% !important;
+  }
+
+  /* Tighten main body side padding */
+  #mainbody {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* Shrink logo so it doesn't clip the hamburger */
+  .spiderfoot-header-image {
+    height: 24px;
+  }
+
+  /* Settings sidebar: switch from stacked pills to wrapping row */
+  .tabbable.tabs-left .nav-pills.nav-stacked {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tabbable.tabs-left .nav-pills.nav-stacked > li {
+    float: none;
+    display: inline-block;
+  }
 }

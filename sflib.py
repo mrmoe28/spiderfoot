@@ -28,7 +28,7 @@ import urllib.request
 from copy import deepcopy
 from datetime import datetime
 
-import cryptography
+import cryptography.x509
 import dns.resolver
 import netaddr
 import OpenSSL
@@ -968,7 +968,12 @@ class SpiderFoot:
         s = socket.socket()
         s.settimeout(int(timeout))
         s.connect((host, int(port)))
-        sock = ssl.wrap_socket(s)
+        # ssl.wrap_socket removed in Python 3.12; use SSLContext.wrap_socket instead.
+        # verify_mode=CERT_NONE intentional: OSINT scanning hits unknown/self-signed certs.
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        sock = ctx.wrap_socket(s, server_hostname=host)
         sock.do_handshake()
         return sock
 

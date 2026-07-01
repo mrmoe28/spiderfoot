@@ -3,15 +3,13 @@
       <div class="container-fluid text-center footer">
         <%
         messages = [
-            "<i class='glyphicon glyphicon-flash'></i>&nbsp;&nbsp;<a target=_new href='https://www.spiderfoot.net/hx'>Create a (free) SpiderFoot HX account in seconds and try it out for yourself.</a>",
-            "<i class='glyphicon glyphicon-flash'></i>&nbsp;&nbsp;<a target=_new href='https://www.spiderfoot.net/open-source-vs-hx'>Learn about the difference between SpiderFoot and SpiderFoot HX.</a>",
-            "<i class='glyphicon glyphicon-heart'></i>&nbsp;&nbsp;<a target=_new href='https://twitter.com/intent/follow?original_referer=https%3A%2F%2Fpublish.twitter.com%2F&ref_src=twsrc%5Etfw%7Ctwcamp%5Ebuttonembed%7Ctwterm%5Efollow%7Ctwgr%5Espiderfoot&screen_name=spiderfoot'>Follow SpiderFoot on Twitter for the latest updates.</a>",
-            "<i class='glyphicon glyphicon-education'></i>&nbsp;&nbsp;<a target=_new href='https://www.spiderfoot.net/documentation'>Check out the SpiderFoot documentation to get more out of SpiderFoot.</a>",
-            "<i class='glyphicon glyphicon-heart'></i>&nbsp;&nbsp;<a target=_new href='https://discord.gg/vyvztrG'>Join the SpiderFoot community Discord!</a>",
-            "<i class='glyphicon glyphicon-console'></i>&nbsp;&nbsp;<a target=_new href='https://asciinema.org/~spiderfoot'>Did you know SpiderFoot also has a CLI? Check out our asciinema tutorials on how to use it.</a>",
-            "<i class='glyphicon glyphicon-flash'></i>&nbsp;&nbsp;<a target=_new href='https://www.spiderfoot.net/hx'>Want more OSINT automation capabilities? Check out SpiderFoot HX.</a>",
-            "<i class='glyphicon glyphicon-cloud'></i>&nbsp;&nbsp;<a target=_new href='https://www.spiderfoot.net/hx'>Don't want to manage your SpiderFoot installation yourself? Check out SpiderFoot HX.</a>",
-            "<i class='glyphicon glyphicon-film'></i>&nbsp;&nbsp;<a target=_new href='https://www.youtube.com/channel/UCujtHhVLNeiJA_3F-lghD-w'>Check out our YouTube channel to see SpiderFoot HX in action.</a>"
+            "<i class='glyphicon glyphicon-shield'></i>&nbsp;&nbsp;Tip: Run scans regularly to catch new exposures before attackers do.",
+            "<i class='glyphicon glyphicon-search'></i>&nbsp;&nbsp;Tip: Use the 'All' use case for a comprehensive sweep of your target.",
+            "<i class='glyphicon glyphicon-lock'></i>&nbsp;&nbsp;Tip: Check the Report tab after each scan for a plain-English summary of findings.",
+            "<i class='glyphicon glyphicon-envelope'></i>&nbsp;&nbsp;Tip: Monitor your domain's SPF, DKIM, and DMARC records to prevent email spoofing.",
+            "<i class='glyphicon glyphicon-warning-sign'></i>&nbsp;&nbsp;Tip: Prioritize CRITICAL and HIGH findings — they are most likely to be actively exploited.",
+            "<i class='glyphicon glyphicon-globe'></i>&nbsp;&nbsp;Tip: Scan subdomains too — forgotten or abandoned subdomains are common attack vectors.",
+            "<i class='glyphicon glyphicon-cloud'></i>&nbsp;&nbsp;Tip: Check for open cloud storage buckets — misconfigured S3 and GCS buckets leak data silently."
         ]
 
         import random

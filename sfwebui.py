@@ -970,6 +970,12 @@ class SpiderFootWebUi:
 
     @cherrypy.expose
     def index(self: 'SpiderFootWebUi') -> str:
+        """BotStop landing page."""
+        templ = Template(filename='spiderfoot/templates/landing.tmpl', lookup=self.lookup)
+        return templ.render(pageid='LANDING', docroot=self.docroot, version=__version__)
+
+    @cherrypy.expose
+    def scans(self: 'SpiderFootWebUi') -> str:
         """Show scan list page.
 
         Returns:

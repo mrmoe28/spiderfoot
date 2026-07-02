@@ -1106,8 +1106,9 @@ class SpiderFootWebUi:
             str: scan options page HTML
         """
         templ = Template(filename='spiderfoot/templates/opts.tmpl', lookup=self.lookup)
-        self.token = random.SystemRandom().randint(0, 99999999)
-        return templ.render(opts=self.config, pageid='SETTINGS', token=self.token, version=__version__,
+        token = random.SystemRandom().randint(0, 99999999)
+        cherrypy.session['settings_token'] = token
+        return templ.render(opts=self.config, pageid='SETTINGS', token=token, version=__version__,
                             updated=updated, docroot=self.docroot)
 
     @cherrypy.expose
@@ -1147,7 +1148,8 @@ class SpiderFootWebUi:
             str: settings as JSON
         """
         ret = dict()
-        self.token = random.SystemRandom().randint(0, 99999999)
+        token = random.SystemRandom().randint(0, 99999999)
+        cherrypy.session['settings_token'] = token
         for opt in self.config:
             if not opt.startswith('__'):
                 ret["global." + opt] = self.config[opt]
@@ -1160,7 +1162,7 @@ class SpiderFootWebUi:
                             continue
                         ret["module." + mod + "." + mo] = self.config['__modules__'][mod]['opts'][mo]
 
-        return ['SUCCESS', {'token': self.token, 'data': ret}]
+        return ['SUCCESS', {'token': cherrypy.session.get('settings_token'), 'data': ret}]
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -1207,7 +1209,7 @@ class SpiderFootWebUi:
         Raises:
             HTTPRedirect: redirect to scan settings
         """
-        if str(token) != str(self.token):
+        if str(token) != str(cherrypy.session.get('settings_token', '')):
             return self.error(f"Invalid token ({token})")
 
         # configFile seems to get set even if a file isn't uploaded
@@ -1272,7 +1274,7 @@ class SpiderFootWebUi:
         """
         cherrypy.response.headers['Content-Type'] = "application/json; charset=utf-8"
 
-        if str(token) != str(self.token):
+        if str(token) != str(cherrypy.session.get('settings_token', '')):
             return json.dumps(["ERROR", f"Invalid token ({token})."]).encode('utf-8')
 
         # Reset config to default

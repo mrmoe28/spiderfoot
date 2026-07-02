@@ -616,7 +616,27 @@
 
             'DEFACED_INTERNET_NAME': 'BotStop found that a site associated with my domain has been defaced. Attackers had write access.\n\nDefaced site: [from scan]\n\nPlease help me:\n1. Take the site offline immediately\n2. Identify how the attacker gained access (check server logs, CMS audit logs, file modification timestamps)\n3. Remove malicious content and restore from a clean backup\n4. Change ALL credentials (hosting panel, CMS admin, FTP, SSH, database)\n5. Scan for web shells or backdoors left behind\n6. Patch the vulnerability before going back online\n\nMy CMS/stack: [WordPress / custom app / etc.]',
 
-            'CLOUD_STORAGE_BUCKET': 'BotStop found a cloud storage bucket associated with my domain.\n\nBucket found: [paste from scan]\n\nPlease help me:\n1. Verify whether this bucket is publicly accessible\n2. If public, restrict it to private access immediately\n3. Review what files it contains for any sensitive data\n4. Audit all buckets in my cloud account for public access\n5. Enable bucket versioning and access logging\n\nCloud provider: [AWS S3 / Google Cloud Storage / Azure Blob]'
+            'CLOUD_STORAGE_BUCKET': 'BotStop found a cloud storage bucket associated with my domain.\n\nBucket found: [paste from scan]\n\nPlease help me:\n1. Verify whether this bucket is publicly accessible\n2. If public, restrict it to private access immediately\n3. Review what files it contains for any sensitive data\n4. Audit all buckets in my cloud account for public access\n5. Enable bucket versioning and access logging\n\nCloud provider: [AWS S3 / Google Cloud Storage / Azure Blob]',
+
+            'DOMAIN_WHOIS': 'BotStop found that my domain WHOIS registration data is publicly visible.\n\nPlease help me:\n1. Enable WHOIS privacy protection through my registrar (hides my name, address, phone, email from public lookup)\n2. Verify my registrar contact info is up-to-date and accurate (required for domain ownership)\n3. Check that my domain is locked to prevent unauthorized transfers\n\nMy registrar: [GoDaddy / Namecheap / Google Domains / Cloudflare / etc.]',
+
+            'AFFILIATE_DOMAIN_WHOIS': 'BotStop found that WHOIS data for a domain affiliated with mine is publicly visible.\n\nAffiliated domain: [from scan]\n\nPlease help me:\n1. Verify if I own or control this affiliated domain\n2. Enable WHOIS privacy on it if I do\n3. If I don\'t own it, check if it could be used to impersonate my brand\n\nMy registrar: [your registrar]',
+
+            'WEBSERVER_HTTPHEADERS': 'BotStop found HTTP response headers on my web server. Some headers may reveal too much or be missing security headers.\n\nHeaders found: [from scan]\n\nPlease help me:\n1. Add missing security headers: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Referrer-Policy\n2. Remove or mask headers that reveal server version info (Server, X-Powered-By)\n3. Add Permissions-Policy to restrict browser features\n4. Test with securityheaders.com\n\nMy web server: [nginx / Apache / Caddy / IIS]',
+
+            'HTTP_CODE': 'BotStop found HTTP status codes from my server. Non-200 codes may indicate broken pages, access issues, or information leaks.\n\nStatus codes found: [from scan]\n\nPlease help me:\n1. Review any 403/404 responses — are they expected or broken links?\n2. Ensure 500 errors don\'t expose stack traces or debug info\n3. Check that redirect chains (301/302) are minimal and correct\n4. Set up proper custom error pages that don\'t leak server info\n\nMy web server/framework: [your stack]',
+
+            'AFFILIATE_INTERNET_NAME': 'BotStop found domain names or hostnames affiliated with my main domain — partner sites, CDNs, or shared infrastructure.\n\nAffiliated hostnames: [from scan]\n\nPlease help me:\n1. Verify each affiliated domain is intentional and still in use\n2. Check that abandoned subdomains are removed from DNS (dangling DNS = hijacking risk)\n3. Ensure affiliated services don\'t have weaker security than my main site\n\nMy DNS provider: [Cloudflare / Route53 / GoDaddy / etc.]',
+
+            'AFFILIATE_IPADDR': 'BotStop found IP addresses associated with services affiliated with my domain.\n\nAffiliated IPs: [from scan]\n\nPlease help me:\n1. Verify these IPs are intentional (CDN, load balancer, third-party service)\n2. Check that firewall rules on these IPs are as strict as my main server\n3. Ensure none of these IPs are running outdated or unpatched services\n\nMy infrastructure: [AWS / GCP / DigitalOcean / Cloudflare / etc.]',
+
+            'EMAILADDR': 'BotStop found email addresses associated with my domain in public sources.\n\nEmails found: [from scan]\n\nPlease help me:\n1. Assess if these emails being public creates phishing or spam risk\n2. Consider using role-based emails (info@, support@) instead of personal addresses in public places\n3. Check each email address in HaveIBeenPwned for breach exposure\n4. Set up DMARC so spammers can\'t spoof these addresses\n\nMy email provider: [Gmail Workspace / Microsoft 365 / etc.]',
+
+            'CO_HOSTED_SITE': 'BotStop found other websites hosted on the same server as my site.\n\nCo-hosted sites: [from scan]\n\nPlease help me:\n1. Understand the risk: if a co-hosted site is compromised, attackers may pivot to mine\n2. Check if my hosting is on shared hosting (higher risk) vs. dedicated/VPS (lower risk)\n3. If on shared hosting, consider moving to VPS or cloud hosting with isolated environments\n4. Ensure my site has proper file permission isolation (no world-readable config files)\n\nMy hosting: [shared / VPS / dedicated / cloud]',
+
+            'SOCIAL_MEDIA': 'BotStop found social media profiles linked to my domain or organization.\n\nProfiles found: [from scan]\n\nPlease help me:\n1. Verify these accounts are official and haven\'t been hijacked\n2. Enable 2FA on all social media accounts\n3. Check for impostor accounts using my brand name\n4. Review what personal or sensitive info is visible on these profiles\n\nPlatforms: [Twitter/X, LinkedIn, Facebook, Instagram, etc.]',
+
+            'PHONE_NUMBER': 'BotStop found phone numbers associated with my domain in public data.\n\nPhone numbers found: [from scan]\n\nPlease help me:\n1. Verify these are business numbers (not personal) that should be public\n2. Check if these numbers could be used for vishing (voice phishing) attacks on my staff\n3. If numbers shouldn\'t be public, remove them from the sources where they appear\n4. Consider using a dedicated business phone system that masks personal numbers'
         };
 
         function showTypeInfo(typeId, typeName, total, unique) {
@@ -1639,6 +1659,8 @@
                                 info:'<span style="color:#7f8c8d">Background Info</span>'};
 
                 var needsData = []; // items we need to fetch real data for
+                var fixedKey = function(tid) { return 'bsfix:' + instanceId + ':' + tid; };
+                var isFixed = function(tid) { return localStorage.getItem(fixedKey(tid)) === '1'; };
 
                 for (var r = 0; r < order.length; r++) {
                     var risk = order[r];
@@ -1650,13 +1672,26 @@
                         var desc = eventTypeHelp[item.typeId] || 'Data collected during the scan.';
                         var fix  = eventTypeFix[item.typeId] || null;
                         var preId = 'fix-pre-' + item.typeId;
-                        html += "<div class='list-group-item' style='margin-bottom:10px'>";
+                        var cardId = 'rcard-' + item.typeId;
+                        var fixed = isFixed(item.typeId);
+                        var cardStyle = fixed ? 'margin-bottom:10px;opacity:0.45;' : 'margin-bottom:10px;';
+                        html += "<div id='" + cardId + "' class='list-group-item' style='" + cardStyle + "'>";
                         html += "<div style='display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px'>";
                         html += "<h5 style='margin:0;flex:1'>";
                         html += "<a class='link' onClick='browseEventData(\"" + instanceId + "\",\"" + item.typeName.replace(/"/g,'&quot;') + "\",\"" + item.typeId + "\",\"full\")'>" + item.typeName + "</a>";
-                        html += "&nbsp;" + riskLabel[risk];
+                        html += "&nbsp;";
+                        if (fixed) {
+                            html += "<span class='label' style='background:#27ae60'>FIXED</span>";
+                        } else {
+                            html += riskLabel[risk];
+                        }
                         html += "</h5>";
+                        html += "<div style='display:flex;align-items:center;gap:10px'>";
                         html += "<span class='text-muted' style='font-size:12px;white-space:nowrap'>" + item.unique + " unique / " + item.total + " total</span>";
+                        html += "<label style='margin:0;display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;white-space:nowrap'>";
+                        html += "<input type='checkbox' onchange='toggleFixed(\"" + instanceId + "\",\"" + item.typeId + "\",\"" + cardId + "\",\"" + risk + "\",this)'" + (fixed ? ' checked' : '') + " style='cursor:pointer'>";
+                        html += "Mark fixed</label>";
+                        html += "</div>";
                         html += "</div>";
                         html += "<p style='margin:8px 0 4px 0;color:#444'>" + desc + "</p>";
                         if (fix) {
@@ -1692,6 +1727,26 @@
                     })(needsData[k]);
                 }
             });
+        }
+
+        function toggleFixed(instanceId, typeId, cardId, risk, cb) {
+            var key = 'bsfix:' + instanceId + ':' + typeId;
+            var card = document.getElementById(cardId);
+            var riskLabel = {'high':'<span class="label label-danger">HIGH RISK</span>',
+                             'medium':'<span class="label label-warning">MEDIUM</span>',
+                             'low':'<span class="label label-info">LOW</span>',
+                             'info':'<span class="label label-default">INFO</span>'};
+            if (cb.checked) {
+                localStorage.setItem(key, '1');
+                card.style.opacity = '0.45';
+                var badge = card.querySelector('h5 span.label');
+                if (badge) badge.outerHTML = '<span class="label" style="background:#27ae60">FIXED</span>';
+            } else {
+                localStorage.removeItem(key);
+                card.style.opacity = '';
+                var badge = card.querySelector('h5 span.label');
+                if (badge) badge.outerHTML = riskLabel[risk] || '';
+            }
         }
         // ── End Report tab ───────────────────────────────────────────────────
 

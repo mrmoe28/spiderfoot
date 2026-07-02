@@ -1065,6 +1065,22 @@ class SpiderFootWebUi:
         return templ.render(pageid='LANDING', docroot=self.docroot, version=__version__)
 
     @cherrypy.expose
+    def privacy(self: 'SpiderFootWebUi') -> str:
+        """Privacy policy page."""
+        templ = Template(filename='spiderfoot/templates/privacy.tmpl', lookup=self.lookup)
+        return templ.render(pageid='PRIVACY', docroot=self.docroot, version=__version__)
+
+    privacy._cp_config = {'tools.check_auth.on': False}
+
+    @cherrypy.expose
+    def terms(self: 'SpiderFootWebUi') -> str:
+        """Terms of service page."""
+        templ = Template(filename='spiderfoot/templates/terms.tmpl', lookup=self.lookup)
+        return templ.render(pageid='TERMS', docroot=self.docroot, version=__version__)
+
+    terms._cp_config = {'tools.check_auth.on': False}
+
+    @cherrypy.expose
     def scans(self: 'SpiderFootWebUi') -> str:
         """Show scan list page.
 

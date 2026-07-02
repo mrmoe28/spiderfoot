@@ -386,9 +386,23 @@ class SpiderFootDb:
                     "google_sub TEXT, "
                     "avatar_url TEXT, "
                     "password_hash TEXT, "
+                    "role TEXT DEFAULT 'user', "
                     "created_at INTEGER NOT NULL"
                     ")"
                 )
+                self.conn.commit()
+
+            # Migrations for existing databases
+            try:
+                self.dbh.execute("SELECT role FROM tbl_users LIMIT 1")
+            except sqlite3.Error:
+                self.dbh.execute("ALTER TABLE tbl_users ADD COLUMN role TEXT DEFAULT 'user'")
+                self.conn.commit()
+
+            try:
+                self.dbh.execute("SELECT user_id FROM tbl_scan_instance LIMIT 1")
+            except sqlite3.Error:
+                self.dbh.execute("ALTER TABLE tbl_scan_instance ADD COLUMN user_id TEXT")
                 self.conn.commit()
 
             if init:
@@ -655,7 +669,7 @@ class SpiderFootDb:
                 # log.critical(f"Unable to log event in DB due to lock: {e.args[0]}")
                 pass
 
-    def scanInstanceCreate(self, instanceId: str, scanName: str, scanTarget: str) -> None:
+    def scanInstanceCreate(self, instanceId: str, scanName: str, scanTarget: str, user_id: str = None) -> None:
         """Store a scan instance in the database.
 
         Args:
@@ -678,13 +692,13 @@ class SpiderFootDb:
             raise TypeError(f"scanTarget is {type(scanTarget)}; expected str()") from None
 
         qry = "INSERT INTO tbl_scan_instance \
-            (guid, name, seed_target, created, status) \
-            VALUES (?, ?, ?, ?, ?)"
+            (guid, name, seed_target, created, status, user_id) \
+            VALUES (?, ?, ?, ?, ?, ?)"
 
         with self.dbhLock:
             try:
                 self.dbh.execute(qry, (
-                    instanceId, scanName, scanTarget, time.time() * 1000, 'CREATED'
+                    instanceId, scanName, scanTarget, time.time() * 1000, 'CREATED', user_id
                 ))
                 self.conn.commit()
             except sqlite3.Error as e:
@@ -732,6 +746,18 @@ class SpiderFootDb:
                 self.conn.commit()
             except sqlite3.Error:
                 raise IOError("Unable to set information for the scan instance.") from None
+
+    def scanInstanceSetUser(self, instanceId: str, user_id: str) -> None:
+        """Tag a scan instance with the owning user's ID."""
+        with self.dbhLock:
+            try:
+                self.dbh.execute(
+                    "UPDATE tbl_scan_instance SET user_id = ? WHERE guid = ?",
+                    (user_id, instanceId)
+                )
+                self.conn.commit()
+            except sqlite3.Error:
+                raise IOError("Unable to set user_id for scan instance.") from None
 
     def scanInstanceGet(self, instanceId: str) -> list:
         """Return info about a scan instance (name, target, created, started, ended, status)
@@ -1500,8 +1526,8 @@ class SpiderFootDb:
 
         return min(100, round(score))
 
-    def scanInstanceList(self) -> list:
-        """List all previously run scans.
+    def scanInstanceList(self, user_id: str = None) -> list:
+        """List previously run scans, optionally filtered by user_id.
 
         Returns:
             list: previously run scans
@@ -1513,20 +1539,26 @@ class SpiderFootDb:
         # SQLite doesn't support OUTER JOINs, so we need a work-around that
         # does a UNION of scans with results and scans without results to
         # get a complete listing.
-        qry = "SELECT i.guid, i.name, i.seed_target, ROUND(i.created/1000), \
+        user_filter = "AND i.user_id = ?" if user_id else ""
+        user_filter2 = "AND i.user_id = ?" if user_id else ""
+        qry = f"SELECT i.guid, i.name, i.seed_target, ROUND(i.created/1000), \
             ROUND(i.started)/1000 as started, ROUND(i.ended)/1000, i.status, COUNT(r.type) \
             FROM tbl_scan_instance i, tbl_scan_results r WHERE i.guid = r.scan_instance_id \
-            AND r.type <> 'ROOT' GROUP BY i.guid \
+            AND r.type <> 'ROOT' {user_filter} GROUP BY i.guid \
             UNION ALL \
             SELECT i.guid, i.name, i.seed_target, ROUND(i.created/1000), \
             ROUND(i.started)/1000 as started, ROUND(i.ended)/1000, i.status, '0' \
             FROM tbl_scan_instance i  WHERE i.guid NOT IN ( \
             SELECT distinct scan_instance_id FROM tbl_scan_results WHERE type <> 'ROOT') \
-            ORDER BY started DESC"
+            {user_filter2} ORDER BY started DESC"
+
+        params = []
+        if user_id:
+            params = [user_id, user_id]
 
         with self.dbhLock:
             try:
-                self.dbh.execute(qry)
+                self.dbh.execute(qry, params)
                 return self.dbh.fetchall()
             except sqlite3.Error as e:
                 raise IOError("SQL error encountered when fetching scan list") from e
@@ -1869,24 +1901,25 @@ class SpiderFootDb:
     # ── User / auth methods ──────────────────────────────────────────────────
 
     def userCreate(self, email: str, name: str, google_sub: str = None,
-                   avatar_url: str = None, password_hash: str = None) -> str:
+                   avatar_url: str = None, password_hash: str = None,
+                   role: str = 'user') -> str:
         import uuid
         import time
         user_id = str(uuid.uuid4())
         qry = ("INSERT INTO tbl_users "
-               "(id, email, name, google_sub, avatar_url, password_hash, created_at) "
-               "VALUES (?, ?, ?, ?, ?, ?, ?)")
+               "(id, email, name, google_sub, avatar_url, password_hash, role, created_at) "
+               "VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
         with self.dbhLock:
             try:
                 self.dbh.execute(qry, (user_id, email, name, google_sub,
-                                       avatar_url, password_hash, int(time.time())))
+                                       avatar_url, password_hash, role, int(time.time())))
                 self.conn.commit()
             except sqlite3.Error as e:
                 raise IOError("Failed to create user") from e
         return user_id
 
     def userGetByEmail(self, email: str) -> dict:
-        qry = ("SELECT id, email, name, google_sub, avatar_url, password_hash "
+        qry = ("SELECT id, email, name, google_sub, avatar_url, password_hash, role "
                "FROM tbl_users WHERE email = ?")
         with self.dbhLock:
             try:
@@ -1897,10 +1930,11 @@ class SpiderFootDb:
         if not row:
             return None
         return {'id': row[0], 'email': row[1], 'name': row[2],
-                'google_sub': row[3], 'avatar_url': row[4], 'password_hash': row[5]}
+                'google_sub': row[3], 'avatar_url': row[4], 'password_hash': row[5],
+                'role': row[6]}
 
     def userGetByGoogleSub(self, google_sub: str) -> dict:
-        qry = ("SELECT id, email, name, google_sub, avatar_url, password_hash "
+        qry = ("SELECT id, email, name, google_sub, avatar_url, password_hash, role "
                "FROM tbl_users WHERE google_sub = ?")
         with self.dbhLock:
             try:
@@ -1911,4 +1945,5 @@ class SpiderFootDb:
         if not row:
             return None
         return {'id': row[0], 'email': row[1], 'name': row[2],
-                'google_sub': row[3], 'avatar_url': row[4], 'password_hash': row[5]}
+                'google_sub': row[3], 'avatar_url': row[4], 'password_hash': row[5],
+                'role': row[6]}

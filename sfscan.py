@@ -446,6 +446,8 @@ class SpiderFootScanner():
             return
 
         counter = 0
+        scan_start_time = time.time()
+        max_scan_duration = 4 * 60 * 60  # 4 hours in seconds
 
         try:
             # start one thread for each module
@@ -464,6 +466,10 @@ class SpiderFootScanner():
                     scanstatus = self.__dbh.scanInstanceGet(self.__scanId)
                     if scanstatus and scanstatus[5] == "ABORT-REQUESTED":
                         raise AssertionError("ABORT-REQUESTED")
+
+                    if time.time() - scan_start_time > max_scan_duration:
+                        self.__sf.status(f"Scan [{self.__scanId}] exceeded maximum duration of 4 hours. Aborting.")
+                        raise AssertionError("MAX-DURATION-EXCEEDED")
 
                 try:
                     sfEvent = self.eventQueue.get_nowait()

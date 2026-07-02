@@ -849,6 +849,10 @@ class SpiderFootWebUi:
             self.log.info("Waiting for the scan to initialize...")
             time.sleep(1)
 
+        user = cherrypy.session.get('user', {})
+        if user.get('id'):
+            dbh.scanInstanceSetUser(scanId, user['id'])
+
         raise cherrypy.HTTPRedirect(f"{self.docroot}/scaninfo?id={scanId}", status=302)
 
     @cherrypy.expose
@@ -902,6 +906,10 @@ class SpiderFootWebUi:
             while dbh.scanInstanceGet(scanId) is None:
                 self.log.info("Waiting for the scan to initialize...")
                 time.sleep(1)
+
+            user = cherrypy.session.get('user', {})
+            if user.get('id'):
+                dbh.scanInstanceSetUser(scanId, user['id'])
 
         templ = Template(filename='spiderfoot/templates/scanlist.tmpl', lookup=self.lookup)
         return templ.render(rerunscans=True, docroot=self.docroot, pageid="SCANLIST", version=__version__)
@@ -982,6 +990,7 @@ class SpiderFootWebUi:
                 cherrypy.session['user'] = {
                     'id': user['id'], 'email': user['email'], 'name': user['name'],
                     'avatar': user.get('avatar_url', ''),
+                    'role': user.get('role', 'user'),
                 }
                 raise cherrypy.HTTPRedirect(self.docroot + '/newscan')
             error = 'Invalid email or password.'
@@ -1038,9 +1047,11 @@ class SpiderFootWebUi:
         user = dbh.userGetByGoogleSub(google_sub) or dbh.userGetByEmail(email)
         if not user:
             user_id = dbh.userCreate(email, name, google_sub=google_sub, avatar_url=avatar)
+            role = 'user'
         else:
             user_id = user['id']
-        cherrypy.session['user'] = {'id': user_id, 'email': email, 'name': name, 'avatar': avatar}
+            role = user.get('role', 'user')
+        cherrypy.session['user'] = {'id': user_id, 'email': email, 'name': name, 'avatar': avatar, 'role': role}
         raise cherrypy.HTTPRedirect(self.docroot + '/newscan')
 
     google_callback._cp_config = {'tools.check_auth.on': False}
@@ -1717,7 +1728,10 @@ class SpiderFootWebUi:
             list: scan list
         """
         dbh = SpiderFootDb(self.config)
-        data = dbh.scanInstanceList()
+        user = cherrypy.session.get('user', {})
+        is_admin = user.get('role') == 'admin'
+        user_id = None if is_admin else user.get('id')
+        data = dbh.scanInstanceList(user_id=user_id)
         retdata = []
 
         for row in data:

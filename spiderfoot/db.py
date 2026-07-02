@@ -374,6 +374,23 @@ class SpiderFootDb:
                                   "SpiderFoot wasn't able to migrate you, so you'll need to delete "
                                   "your SpiderFoot database in order to proceed.") from None
 
+            # Add users table if it doesn't exist (introduced in BotStop 4.0 multi-tenant)
+            try:
+                self.dbh.execute("SELECT COUNT(*) FROM tbl_users")
+            except sqlite3.Error:
+                self.dbh.execute(
+                    "CREATE TABLE IF NOT EXISTS tbl_users ("
+                    "id TEXT PRIMARY KEY, "
+                    "email TEXT UNIQUE NOT NULL, "
+                    "name TEXT, "
+                    "google_sub TEXT, "
+                    "avatar_url TEXT, "
+                    "password_hash TEXT, "
+                    "created_at INTEGER NOT NULL"
+                    ")"
+                )
+                self.conn.commit()
+
             if init:
                 for row in self.eventDetails:
                     event = row[0]
@@ -1848,3 +1865,50 @@ class SpiderFootDb:
                     raise IOError("Unable to create correlation result in database") from e
 
         return uniqueId
+
+    # ── User / auth methods ──────────────────────────────────────────────────
+
+    def userCreate(self, email: str, name: str, google_sub: str = None,
+                   avatar_url: str = None, password_hash: str = None) -> str:
+        import uuid
+        import time
+        user_id = str(uuid.uuid4())
+        qry = ("INSERT INTO tbl_users "
+               "(id, email, name, google_sub, avatar_url, password_hash, created_at) "
+               "VALUES (?, ?, ?, ?, ?, ?, ?)")
+        with self.dbhLock:
+            try:
+                self.dbh.execute(qry, (user_id, email, name, google_sub,
+                                       avatar_url, password_hash, int(time.time())))
+                self.conn.commit()
+            except sqlite3.Error as e:
+                raise IOError("Failed to create user") from e
+        return user_id
+
+    def userGetByEmail(self, email: str) -> dict:
+        qry = ("SELECT id, email, name, google_sub, avatar_url, password_hash "
+               "FROM tbl_users WHERE email = ?")
+        with self.dbhLock:
+            try:
+                self.dbh.execute(qry, (email,))
+                row = self.dbh.fetchone()
+            except sqlite3.Error:
+                return None
+        if not row:
+            return None
+        return {'id': row[0], 'email': row[1], 'name': row[2],
+                'google_sub': row[3], 'avatar_url': row[4], 'password_hash': row[5]}
+
+    def userGetByGoogleSub(self, google_sub: str) -> dict:
+        qry = ("SELECT id, email, name, google_sub, avatar_url, password_hash "
+               "FROM tbl_users WHERE google_sub = ?")
+        with self.dbhLock:
+            try:
+                self.dbh.execute(qry, (google_sub,))
+                row = self.dbh.fetchone()
+            except sqlite3.Error:
+                return None
+        if not row:
+            return None
+        return {'id': row[0], 'email': row[1], 'name': row[2],
+                'google_sub': row[3], 'avatar_url': row[4], 'password_hash': row[5]}

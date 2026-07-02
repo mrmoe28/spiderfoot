@@ -13,10 +13,11 @@
 
 import argparse
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 import multiprocessing as mp
 import os
 import os.path
-import random
 import signal
 import sys
 import time
@@ -24,7 +25,6 @@ from copy import deepcopy
 
 import cherrypy
 import cherrypy_cors
-from cherrypy.lib import auth_digest
 
 from sflib import SpiderFoot
 from sfscan import startSpiderFootScanner
@@ -521,21 +521,28 @@ def start_web_server(sfWebUiConfig: dict, sfConfig: dict, loggingQueue=None) -> 
 
             secrets[u] = p
 
+    # Session-based auth with Google OAuth (replaces digest auth)
+    _PUBLIC_PATHS = {'/', '/login', '/google_auth', '/google_callback'}
+
+    def _check_auth():
+        path = cherrypy.request.path_info
+        if path in _PUBLIC_PATHS or path.startswith('/static'):
+            return
+        if not cherrypy.session.get('user'):
+            raise cherrypy.HTTPRedirect(cherrypy.url('/login'))
+
+    cherrypy.tools.check_auth = cherrypy.Tool('before_handler', _check_auth)
+
+    conf['/'] = {
+        'tools.sessions.on': True,
+        'tools.sessions.timeout': 120,
+        'tools.check_auth.on': True,
+    }
+
     if secrets:
-        log.info("Enabling authentication based on supplied passwd file.")
-        conf['/'] = {
-            'tools.auth_digest.on': True,
-            'tools.auth_digest.realm': web_host,
-            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain(secrets),
-            'tools.auth_digest.key': random.SystemRandom().randint(0, 99999999)
-        }
+        log.info("passwd file present but session auth is active; passwd file ignored.")
     else:
-        warn_msg = "\n********************************************************************\n"
-        warn_msg += "Warning: passwd file contains no passwords. Authentication disabled.\n"
-        warn_msg += "Please consider adding authentication to protect this instance!\n"
-        warn_msg += "Refer to https://www.spiderfoot.net/documentation/#security.\n"
-        warn_msg += "********************************************************************\n"
-        log.warning(warn_msg)
+        log.info("Session-based authentication enabled (Google OAuth).")
 
     using_ssl = False
     key_path = SpiderFootHelpers.dataPath() + '/spiderfoot.key'

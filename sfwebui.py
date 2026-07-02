@@ -968,6 +968,85 @@ class SpiderFootWebUi:
                             scanname=str(scanname),
                             scantarget=str(scantarget), version=__version__)
 
+    # ── Auth routes ───────────────────────────────────────────────────────────
+
+    @cherrypy.expose
+    def login(self: 'SpiderFootWebUi', email: str = '', password: str = '') -> str:
+        """Login page (GET) and email/password handler (POST)."""
+        from spiderfoot.auth import verify_password
+        error = ''
+        if cherrypy.request.method == 'POST':
+            dbh = SpiderFootDb(self.config)
+            user = dbh.userGetByEmail(email.strip().lower())
+            if user and user.get('password_hash') and verify_password(password, user['password_hash']):
+                cherrypy.session['user'] = {
+                    'id': user['id'], 'email': user['email'], 'name': user['name'],
+                    'avatar': user.get('avatar_url', ''),
+                }
+                raise cherrypy.HTTPRedirect(self.docroot + '/newscan')
+            error = 'Invalid email or password.'
+        templ = Template(filename='spiderfoot/templates/login.tmpl', lookup=self.lookup)
+        return templ.render(docroot=self.docroot, version=__version__, error=error)
+
+    login._cp_config = {'tools.check_auth.on': False}
+
+    @cherrypy.expose
+    def logout(self: 'SpiderFootWebUi') -> None:
+        """Clear session and redirect to login."""
+        cherrypy.session.clear()
+        raise cherrypy.HTTPRedirect(self.docroot + '/login')
+
+    logout._cp_config = {'tools.check_auth.on': False}
+
+    @cherrypy.expose
+    def google_auth(self: 'SpiderFootWebUi') -> None:
+        """Initiate Google OAuth flow."""
+        import os
+        import secrets as _secrets
+        from spiderfoot.auth import google_login_url
+        client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
+        redirect_uri = cherrypy.request.base + self.docroot + '/google_callback'
+        state = _secrets.token_urlsafe(16)
+        cherrypy.session['oauth_state'] = state
+        url = google_login_url(client_id, redirect_uri, state)
+        raise cherrypy.HTTPRedirect(url)
+
+    google_auth._cp_config = {'tools.check_auth.on': False}
+
+    @cherrypy.expose
+    def google_callback(self: 'SpiderFootWebUi', code: str = '', state: str = '',
+                        error: str = '') -> None:
+        """Handle Google OAuth callback."""
+        import os
+        from spiderfoot.auth import google_fetch_user
+        if error or not code:
+            raise cherrypy.HTTPRedirect(self.docroot + '/login')
+        if state != cherrypy.session.get('oauth_state', ''):
+            raise cherrypy.HTTPRedirect(self.docroot + '/login')
+        client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
+        client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+        redirect_uri = cherrypy.request.base + self.docroot + '/google_callback'
+        try:
+            info = google_fetch_user(client_id, client_secret, redirect_uri, code)
+        except Exception:
+            raise cherrypy.HTTPRedirect(self.docroot + '/login')
+        google_sub = info.get('sub', '')
+        email = info.get('email', '').lower()
+        name = info.get('name', email)
+        avatar = info.get('picture', '')
+        dbh = SpiderFootDb(self.config)
+        user = dbh.userGetByGoogleSub(google_sub) or dbh.userGetByEmail(email)
+        if not user:
+            user_id = dbh.userCreate(email, name, google_sub=google_sub, avatar_url=avatar)
+        else:
+            user_id = user['id']
+        cherrypy.session['user'] = {'id': user_id, 'email': email, 'name': name, 'avatar': avatar}
+        raise cherrypy.HTTPRedirect(self.docroot + '/newscan')
+
+    google_callback._cp_config = {'tools.check_auth.on': False}
+
+    # ── End auth routes ───────────────────────────────────────────────────────
+
     @cherrypy.expose
     def index(self: 'SpiderFootWebUi') -> str:
         """BotStop landing page."""
